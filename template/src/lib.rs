@@ -1,8 +1,8 @@
-pub fn process_1(input: &str) -> String {
+pub fn process_1(_input: &str) -> String {
     todo!();
 }
 
-pub fn process_2(input: &str) -> String {
+pub fn process_2(_input: &str) -> String {
     todo!();
 }
 
