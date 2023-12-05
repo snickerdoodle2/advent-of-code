@@ -6,27 +6,11 @@ use nom::{
     IResult,
 };
 
-use itertools::*;
+use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 
 #[derive(Debug)]
-enum Type {
-    Seed,
-    Soil,
-    Fertilizer,
-    Water,
-    Light,
-    Temperature,
-    Humidity,
-    Location,
-}
-
-use Type::*;
-
-#[derive(Debug)]
 struct Map {
-    from: Type,
-    to: Type,
     ranges: Vec<(u32, u32, u32)>,
 }
 
@@ -42,23 +26,6 @@ impl Map {
     }
 }
 
-fn parse_type(input: &str) -> IResult<&str, Type> {
-    let (input, name) = alpha1(input)?;
-    let name = match name {
-        "seed" => Seed,
-        "soil" => Soil,
-        "fertilizer" => Fertilizer,
-        "water" => Water,
-        "light" => Light,
-        "temperature" => Temperature,
-        "humidity" => Humidity,
-        "location" => Location,
-        _ => panic!("Error parsing: {}", name),
-    };
-
-    Ok((input, name))
-}
-
 fn parse_range(input: &str) -> IResult<&str, (u32, u32, u32)> {
     let (input, first) = digit1(input).map(|(a, b)| (a, b.parse().unwrap()))?;
     let (input, second) =
@@ -68,12 +35,12 @@ fn parse_range(input: &str) -> IResult<&str, (u32, u32, u32)> {
 }
 
 fn parse_map(input: &str) -> IResult<&str, Map> {
-    let (input, (from, to)) = terminated(
-        separated_pair(parse_type, tag("-to-"), parse_type),
+    let (input, (_, _)) = terminated(
+        separated_pair(alpha1, tag("-to-"), alpha1),
         tuple((tag(" map:"), newline)),
     )(input)?;
     let (input, ranges) = separated_list1(newline, parse_range)(input)?;
-    Ok((input, Map { from, to, ranges }))
+    Ok((input, Map { ranges }))
 }
 
 fn parse_input(input: &str) -> IResult<&str, (Vec<u32>, Vec<Map>)> {
@@ -89,31 +56,45 @@ fn parse_input(input: &str) -> IResult<&str, (Vec<u32>, Vec<Map>)> {
 
 pub fn process_1(input: &str) -> String {
     let (_, (seeds, maps)) = parse_input(input).unwrap();
-    seeds.iter().map(|seed| {
-        let mut seed = *seed;
-        for map in &maps {
-            seed = map.find_next(&seed);
-        }
-        seed
-    }).min().unwrap().to_string()
+    seeds
+        .iter()
+        .map(|seed| {
+            let mut seed = *seed;
+            for map in &maps {
+                seed = map.find_next(&seed);
+            }
+            seed
+        })
+        .min()
+        .unwrap()
+        .to_string()
 }
 
 pub fn process_2(input: &str) -> String {
     let (_, (seeds, maps)) = parse_input(input).unwrap();
-    let seeds = seeds.chunks(2).flat_map(|x| {
-        let start = x[0];
-        let stop = x[1];
-        start..(start+stop)
-    }).collect::<Vec<u32>>();
+    let seeds = seeds
+        .chunks(2)
+        .flat_map(|x| {
+            let start = x[0];
+            let stop = x[1];
+            start..(start + stop)
+        })
+        .collect::<Vec<u32>>();
 
     // parallelize it lol
-    seeds.par_iter().map(|seed| {
-        let mut seed = *seed;
-        for map in &maps {
-            seed = map.find_next(&seed);
-        }
-        seed
-    }).min().unwrap().to_string()
+    seeds
+        .par_iter()
+        .progress()
+        .map(|seed| {
+            let mut seed = *seed;
+            for map in &maps {
+                seed = map.find_next(&seed);
+            }
+            seed
+        })
+        .min()
+        .unwrap()
+        .to_string()
 }
 
 #[cfg(test)]
