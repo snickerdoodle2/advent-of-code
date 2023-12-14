@@ -205,21 +205,19 @@ pub fn process_2(input: &str) -> String {
 
         let key = grid_key(&rocks, &height, &width);
 
-        if i % 4 == 0 {
-            if let Some(cycle_start) = cache.get(&key) {
-                let cycle_size = i - cycle_start;
-                let target_cycle = cycle_start + (1_000_000_000 - cycle_start) % cycle_size;
+        if let Some(cycle_start) = cache.get(&key) {
+            let cycle_size = i - cycle_start;
+            let target_cycle = cycle_start + (1_000_000_000 - cycle_start) % cycle_size;
 
-                for (k, v) in &cache {
-                    if *v == target_cycle {
-                        let (rocks_tmp, _, _) = parse_input(k);
-                        rocks = rocks_tmp;
-                        break 'outer;
-                    }
+            for (k, v) in &cache {
+                if *v == target_cycle {
+                    let (rocks_tmp, _, _) = parse_input(k);
+                    rocks = rocks_tmp;
+                    break 'outer;
                 }
-            } else {
-                cache.insert(key, i);
             }
+        } else {
+            cache.insert(key, i);
         }
     }
 
