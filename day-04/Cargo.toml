@@ -13,3 +13,9 @@ strum_macros = "0.26.4"
 
 [dev-dependencies]
 rstest.workspace = true
+divan.workspace = true
+
+[[bench]]
+name = "day-04-bench"
+harness = false
+path = "./benches/benchmark.rs"
