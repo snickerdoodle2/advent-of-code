@@ -1,0 +1,13 @@
+[package]
+name = "day-06"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+indicatif.workspace = true
+itertools.workspace = true
+nom.workspace = true
+rayon.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
