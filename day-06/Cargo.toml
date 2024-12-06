@@ -11,3 +11,9 @@ rayon.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
+divan.workspace = true
+
+[[bench]]
+name = "day-06-bench"
+harness = false
+path = "./benches/benchmark.rs"
