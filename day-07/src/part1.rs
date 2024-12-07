@@ -1,0 +1,93 @@
+use itertools::repeat_n;
+use itertools::Itertools;
+use nom::{
+    bytes::complete::tag,
+    character::complete::{self, newline},
+    multi::separated_list1,
+    sequence::preceded,
+    IResult,
+};
+use rayon::iter::ParallelBridge;
+use rayon::iter::ParallelIterator;
+
+#[derive(Debug)]
+enum Operation {
+    Addition,
+    Multiplication,
+}
+
+const OPS: [Operation; 2] = [Operation::Addition, Operation::Multiplication];
+
+fn generate_operations(n: usize) -> impl Iterator<Item = Vec<&'static Operation>> {
+    repeat_n(OPS.iter(), n).multi_cartesian_product()
+}
+
+#[derive(Debug)]
+struct Equation {
+    answer: u64,
+    parts: Vec<u64>,
+}
+
+impl Equation {
+    fn can_be_valid(&self) -> bool {
+        let opts = generate_operations(self.parts.len() - 1);
+        opts.par_bridge().any(|ops| {
+            let mut remaining_parts = self.parts.iter();
+            let mut res = *remaining_parts.next().unwrap();
+            for (num, op) in remaining_parts.zip(ops) {
+                match op {
+                    Operation::Addition => res += num,
+                    Operation::Multiplication => res *= num,
+                }
+            }
+
+            res == self.answer
+        })
+    }
+}
+
+fn parse_equation(input: &str) -> IResult<&str, Equation> {
+    let (input, answer) = complete::u64(input)?;
+    let (input, parts) = preceded(tag(": "), separated_list1(tag(" "), complete::u64))(input)?;
+
+    Ok((input, Equation { answer, parts }))
+}
+
+fn parse(input: &str) -> IResult<&str, Vec<Equation>> {
+    separated_list1(newline, parse_equation)(input)
+}
+
+pub fn process(input: &str) -> String {
+    let (_, equations) = parse(input).unwrap();
+
+    equations
+        .iter()
+        .filter_map(|eq| {
+            if eq.can_be_valid() {
+                Some(eq.answer)
+            } else {
+                None
+            }
+        })
+        .sum::<u64>()
+        .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_part1() {
+        let input = r#"190: 10 19
+3267: 81 40 27
+83: 17 5
+156: 15 6
+7290: 6 8 6 15
+161011: 16 10 13
+192: 17 8 14
+21037: 9 7 18 13
+292: 11 6 16 20"#;
+        assert_eq!("3749", process(input));
+    }
+}
