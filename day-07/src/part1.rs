@@ -7,7 +7,7 @@ use nom::{
     sequence::preceded,
     IResult,
 };
-use rayon::iter::ParallelBridge;
+use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 
 #[derive(Debug)]
@@ -30,8 +30,8 @@ struct Equation {
 
 impl Equation {
     fn can_be_valid(&self) -> bool {
-        let opts = generate_operations(self.parts.len() - 1);
-        opts.par_bridge().any(|ops| {
+        let mut opts = generate_operations(self.parts.len() - 1);
+        opts.any(|ops| {
             let mut remaining_parts = self.parts.iter();
             let mut res = *remaining_parts.next().unwrap();
             for (num, op) in remaining_parts.zip(ops) {
@@ -61,7 +61,7 @@ pub fn process(input: &str) -> String {
     let (_, equations) = parse(input).unwrap();
 
     equations
-        .iter()
+        .par_iter()
         .filter_map(|eq| {
             if eq.can_be_valid() {
                 Some(eq.answer)
