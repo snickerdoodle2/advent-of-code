@@ -40,6 +40,9 @@ impl Equation {
             let mut remaining_parts = self.parts.iter();
             let mut res = *remaining_parts.next().unwrap();
             for (num, op) in remaining_parts.zip(ops) {
+                if res > self.answer {
+                    return false;
+                }
                 match op {
                     Operation::Addition => res += num,
                     Operation::Multiplication => res *= num,
