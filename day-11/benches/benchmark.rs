@@ -1,15 +1,17 @@
-use day_11::{part1, part2};
+use day_11::part1;
 
 fn main() {
     divan::main();
 }
 
-#[divan::bench]
-fn part1_bench() {
-    part1::process(divan::black_box(include_str!("../input1.txt")));
-}
-
-#[divan::bench]
-fn part2_bench() {
-    part2::process(divan::black_box(include_str!("../input2.txt")));
+#[divan::bench(consts=[
+    10,
+    15,
+    25,
+    50,
+    75,
+    100
+])]
+fn aoc_bench<const N: u8>() {
+    part1::process(divan::black_box(include_str!("../input1.txt")), N);
 }

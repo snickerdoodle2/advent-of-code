@@ -37,14 +37,14 @@ fn mutate(stone: u64, iters: u8, cache: &mut Cache) -> usize {
     res
 }
 
-pub fn process(input: &str) -> String {
+pub fn process(input: &str, iters: u8) -> String {
     let stones = parse(input);
 
     let mut cache = Cache::new();
 
     let res: usize = stones
         .into_iter()
-        .map(|stone| mutate(stone, 25, &mut cache))
+        .map(|stone| mutate(stone, iters, &mut cache))
         .sum();
     res.to_string()
 }
@@ -56,15 +56,6 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = "125 17";
-        let stones = parse(input);
-        let mut cache = Cache::new();
-
-        let res: usize = stones
-            .into_iter()
-            .map(|stone| mutate(stone, 25, &mut cache))
-            .sum();
-
-        dbg!(cache);
-        assert_eq!("55312", res.to_string());
+        assert_eq!("55312", process(input, 25));
     }
 }
