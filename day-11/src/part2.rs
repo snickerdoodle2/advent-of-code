@@ -1,49 +1,70 @@
-use indicatif::ParallelProgressIterator;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy)]
-struct Stone(u64);
+type Cache = HashMap<(u8, u64), usize>;
 
-impl Stone {
-    fn change(self) -> Vec<Self> {
-        if self.0 == 0 {
-            return vec![Self(1)];
-        }
+fn parse(input: &str) -> Vec<u64> {
+    input
+        .split_whitespace()
+        .map(|x| x.parse().unwrap())
+        .collect()
+}
 
-        let num = self.0;
-
-        let n = (num as f32).log10().floor() as u32 + 1;
-        if n % 2 == 0 {
-            let tmp = 10_u64.pow(n / 2);
-            let left = num / tmp;
-            let right = num % tmp;
-            return vec![Self(left), Self(right)];
-        }
-
-        vec![Self(num * 2024)]
+fn mutate(stone: u64, iters: u8, cache: &mut Cache) -> usize {
+    if iters == 0 {
+        return 1;
     }
+
+    if let Some(cached) = cache.get(&(iters, stone)) {
+        return *cached;
+    }
+
+    if stone == 0 {
+        let res = mutate(1, iters - 1, cache);
+        cache.insert((iters, stone), res);
+        return res;
+    }
+
+    let n = (stone as f32).log10().floor() as u32 + 1;
+    if n % 2 == 0 {
+        let tmp = 10_u64.pow(n / 2);
+        let res = mutate(stone / tmp, iters - 1, cache) + mutate(stone % tmp, iters - 1, cache);
+        cache.insert((iters, stone), res);
+        return res;
+    }
+
+    let res = mutate(stone * 2024, iters - 1, cache);
+    cache.insert((iters, stone), res);
+    res
 }
 
 pub fn process(input: &str) -> String {
-    let stones_: Vec<_> = input
-        .split_whitespace()
-        .map(|x| vec![Stone(x.parse().unwrap())])
-        .collect();
+    let stones = parse(input);
 
-    let res: usize = stones_
-        .par_iter()
-        .map(|stones| {
-            let mut stones = stones.clone();
-            for _iter in 0..75 {
-                stones = stones.into_iter().flat_map(|x| x.change()).collect();
-            }
+    let mut cache = Cache::new();
 
-            stones.len()
-        })
+    let res: usize = stones
+        .into_iter()
+        .map(|stone| mutate(stone, 75, &mut cache))
         .sum();
-
     res.to_string()
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_part2() {
+        let input = "125 17";
+        let stones = parse(input);
+        let mut cache = Cache::new();
+
+        let res: usize = stones
+            .into_iter()
+            .map(|stone| mutate(stone, 25, &mut cache))
+            .sum();
+
+        dbg!(cache);
+        assert_eq!("55312", res.to_string());
+    }
+}
