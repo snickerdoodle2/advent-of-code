@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 type Map = Vec<Vec<char>>;
 
 fn parse(input: &str) -> Map {
