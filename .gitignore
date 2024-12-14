@@ -3,3 +3,4 @@ input1.txt
 input2.txt
 !daily-template/input1.txt
 !daily-template/input2.txt
+.DS_Store

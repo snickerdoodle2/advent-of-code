@@ -9,6 +9,7 @@ itertools.workspace = true
 nom.workspace = true
 rayon.workspace = true
 glam.workspace = true
+png = "0.17.15"
 
 [dev-dependencies]
 rstest.workspace = true
