@@ -8,6 +8,7 @@ indicatif.workspace = true
 itertools.workspace = true
 nom.workspace = true
 rayon.workspace = true
+glam.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
