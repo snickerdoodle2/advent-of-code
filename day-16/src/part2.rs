@@ -73,6 +73,11 @@ fn walk(map: &Map, x: usize, y: usize) -> HashSet<(usize, usize)> {
     let mut res = HashSet::new();
 
     while let Some(Reverse(QueueItem(cost, x, y, dir, mut path))) = heap.pop() {
+        if let Some(cur_best) = best_path {
+            if cur_best < cost {
+                break;
+            }
+        }
         let item = map[y][x];
         if item == 'E' {
             if let Some(cur_best) = best_path {
