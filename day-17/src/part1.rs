@@ -45,6 +45,7 @@ enum Instruction {
     Bxl(u8),
     Bst(u8),
     Jnz(u8),
+    #[allow(dead_code)]
     Bxc(u8),
     Out(u8),
     Bdv(u8),
