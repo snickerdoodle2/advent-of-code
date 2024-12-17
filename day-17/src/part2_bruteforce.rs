@@ -153,6 +153,7 @@ pub fn process(input: &str) -> String {
 
     let mut i = 1;
     let mut lower_bound = 0;
+    #[allow(unused_assignments)]
     let mut upper_bound = 0;
     let mut found_lower = false;
 
