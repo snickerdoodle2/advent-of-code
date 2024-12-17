@@ -33,7 +33,6 @@ impl Computer {
             4 => self.a,
             5 => self.b,
             6 => self.c,
-            7 => u64::MAX,
             _ => unreachable!(),
         }
     }
@@ -46,8 +45,7 @@ impl Computer {
                 self.a = res;
             }
             Instruction::Bxl(operand) => {
-                let operand = self.operand(*operand);
-                self.b ^= operand;
+                self.b ^= *operand as u64;
             }
             Instruction::Bst(operand) => {
                 let operand = self.operand(*operand);
@@ -55,8 +53,7 @@ impl Computer {
             }
             Instruction::Jnz(operand) => {
                 if self.a != 0 {
-                    let operand = self.operand(*operand);
-                    next_instruction = Some(operand as usize);
+                    next_instruction = Some(*operand as usize);
                 }
             }
             Instruction::Bxc(_) => {
@@ -125,13 +122,9 @@ fn parse(input: &str) -> IResult<&str, (Computer, Vec<Instruction>)> {
 
     Ok((input, (Computer::new(a, b, c), instructions)))
 }
-pub fn process(input: &str) -> String {
-    let (_, (mut computer, instructions)) = parse(input).unwrap();
-    while let Some(instruction) = instructions.get(computer.cur_instruction) {
-        instruction.execute(&mut computer);
-    }
 
-    computer.output.into_iter().join(",")
+pub fn process(input: &str) -> String {
+    todo!();
 }
 
 #[cfg(test)]
@@ -139,12 +132,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_part1() {
+    fn test_part2() {
         let input = "Register A: 729
 Register B: 0
 Register C: 0
 
 Program: 0,1,5,4,3,0";
-        assert_eq!("4,6,3,5,6,3,5,2,1,0", process(input));
+        assert_eq!("117440", process(input));
     }
 }
