@@ -147,18 +147,15 @@ fn assert_data(instructions: &[Instruction]) {
 }
 
 fn check_output(given: &[u8], expected: &[u8], n: usize) -> bool {
-    if given.len() <= n {
-        return false;
-    }
-
-    for i in 0..=n {
-        if given[i] != expected[i] {
+    for (e, g) in expected.iter().rev().zip(given.iter().rev()).take(n + 1) {
+        if e != g {
             return false;
         }
     }
     true
 }
 
+// NOTE: WORKS FROM BACKWARDS
 fn find_a_register(
     digits: usize,
     instructions: &[Instruction],
@@ -170,11 +167,19 @@ fn find_a_register(
 ) -> Option<u64> {
     let mut min_res = None;
     for x in 0..(1 << digits) {
-        let a = (cur_a << digits) + x;
+        let a = cur_a << digits | x;
         let mut computer = Computer::new(a, b, c);
         computer.run_program(instructions);
         if !check_output(&computer.output, expected_output, cur_instruction) {
             continue;
+        }
+
+        if computer.output.len() > expected_output.len() {
+            return None;
+        }
+
+        if computer.output == expected_output {
+            return Some(a);
         }
 
         if let Some(res) = find_a_register(
@@ -216,9 +221,8 @@ pub fn process(input: &str) -> String {
     };
 
     let res = find_a_register(*digits as usize, &instructions, &inst_vec, 0, 0, b, c);
-    dbg!(res);
 
-    todo!();
+    res.unwrap().to_string()
 }
 
 #[cfg(test)]
@@ -227,14 +231,15 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        let input = "Register A: 729
+        let input = "Register A: 2024
 Register B: 0
 Register C: 0
 
-Program: 0,1,5,4,3,0";
+Program: 0,3,5,4,3,0";
         assert_eq!("117440", process(input));
     }
 
+    #[test]
     fn test_my_input() {
         let input = "Register A: 27334280
 Register B: 0
