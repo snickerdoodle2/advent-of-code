@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use itertools::Itertools;
 use nom::{
     bytes::complete::tag,
@@ -6,7 +8,7 @@ use nom::{
     sequence::{delimited, preceded},
     IResult,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 #[derive(Debug)]
 struct Computer {
@@ -46,6 +48,7 @@ enum Instruction {
     Bxl(u8),
     Bst(u8),
     Jnz(u8),
+    #[allow(dead_code)]
     Bxc(u8),
     Out(u8),
     Bdv(u8),
@@ -130,20 +133,111 @@ fn parse(input: &str) -> IResult<&str, ((u64, u64), Vec<u8>)> {
 
     Ok((input, ((b, c), instructions)))
 }
+
+fn generate_range(start: u64, stop: u64, n: u64) -> Vec<(u64, u64)> {
+    let size = (stop - start) as f64;
+    let step_size = (size / n as f64).ceil() as u64;
+    (0..n)
+        .map(|i| {
+            let l = start + i * step_size;
+            let r = start + (i + 1) * step_size;
+
+            (l, r.min(stop))
+        })
+        .collect()
+}
+
 pub fn process(input: &str) -> String {
     let (_, ((b, c), instructions_vec)) = parse(input).unwrap();
     let instructions = parse_instructions(&instructions_vec);
 
-    let a = (0..=u64::MAX).into_par_iter().find_any(|a| {
-        let mut computer = Computer::new(*a, b, c);
+    let mut i = 1;
+    let mut lower_bound = 0;
+    let mut upper_bound = 0;
+    let mut found_lower = false;
+
+    loop {
+        let mut computer = Computer::new(i, b, c);
         while let Some(instruction) = instructions.get(computer.cur_instruction) {
             instruction.execute(&mut computer);
         }
 
-        computer.output.eq(&instructions_vec)
-    });
+        if computer.output.len() == instructions_vec.len() && !found_lower {
+            lower_bound = i;
+            found_lower = true;
+        }
 
-    a.unwrap().to_string()
+        if computer.output.len() > instructions_vec.len() && found_lower {
+            upper_bound = i;
+            break;
+        }
+
+        i *= 2;
+    }
+
+    println!(
+        "Lower: {}, Upper: {}, Size: {}",
+        lower_bound,
+        upper_bound,
+        upper_bound - lower_bound
+    );
+
+    let mut chunks: Vec<(usize, u64, u64)> = generate_range(lower_bound, upper_bound, 100_000_000)
+        .par_iter()
+        .map(|(start, end)| {
+            let mut computer_1 = Computer::new(*start, b, c);
+            while let Some(instruction) = instructions.get(computer_1.cur_instruction) {
+                instruction.execute(&mut computer_1);
+            }
+
+            let valid_1 = computer_1
+                .output
+                .iter()
+                .zip(&instructions_vec)
+                .filter(|(a, b)| a == b)
+                .count();
+
+            let mut computer_2 = Computer::new(*end, b, c);
+            while let Some(instruction) = instructions.get(computer_2.cur_instruction) {
+                instruction.execute(&mut computer_2);
+            }
+
+            let valid_2 = computer_2
+                .output
+                .iter()
+                .zip(&instructions_vec)
+                .filter(|(a, b)| a == b)
+                .count();
+
+            (valid_1 + valid_2, *start, *end)
+        })
+        .collect();
+
+    chunks.sort_by_key(|x| (Reverse(x.0), x.1));
+
+    let mut min_match = u64::MAX;
+
+    for (i, (matches, start, end)) in chunks.into_iter().take(1_000_000).enumerate() {
+        println!("CHUNK {}: {}..{} ({} matches)", i, start, end, matches);
+
+        let res = (start..end).into_par_iter().find_first(|a| {
+            let mut computer = Computer::new(*a, b, c);
+            while let Some(instruction) = instructions.get(computer.cur_instruction) {
+                instruction.execute(&mut computer);
+            }
+
+            computer.output == instructions_vec
+        });
+
+        if let Some(res) = res {
+            if min_match > res {
+                min_match = res;
+                println!("{}", res);
+            }
+        }
+    }
+
+    "".to_string()
 }
 
 #[cfg(test)]
