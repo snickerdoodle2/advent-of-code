@@ -92,20 +92,14 @@ enum Instruction {
     Cdv(u8),
 }
 
-fn parse(input: &str) -> IResult<&str, (Computer, Vec<Instruction>)> {
-    let (input, a) = delimited(tag("Register A: "), complete::u64, many1(newline))(input)?;
-    let (input, b) = delimited(tag("Register B: "), complete::u64, many1(newline))(input)?;
-    let (input, c) = delimited(tag("Register C: "), complete::u64, many1(newline))(input)?;
-    let (input, instructions) =
-        preceded(tag("Program: "), separated_list1(char(','), complete::u8))(input)?;
-
-    let instructions = instructions
-        .into_iter()
+fn parse_instructions(ins: &[u8]) -> Vec<Instruction> {
+    ins.into_iter()
         .chunks(2)
         .into_iter()
         .map(|mut i| {
             let opcode = i.next().unwrap();
             let operand = i.next().unwrap();
+            let operand = *operand;
             match opcode {
                 0 => Instruction::Adv(operand),
                 1 => Instruction::Bxl(operand),
@@ -118,12 +112,51 @@ fn parse(input: &str) -> IResult<&str, (Computer, Vec<Instruction>)> {
                 _ => unreachable!(),
             }
         })
-        .collect();
+        .collect()
+}
 
-    Ok((input, (Computer::new(a, b, c), instructions)))
+fn parse(input: &str) -> IResult<&str, ((u64, u64), Vec<u8>)> {
+    let (input, _) = delimited(tag("Register A: "), complete::u64, many1(newline))(input)?;
+    let (input, b) = delimited(tag("Register B: "), complete::u64, many1(newline))(input)?;
+    let (input, c) = delimited(tag("Register C: "), complete::u64, many1(newline))(input)?;
+    let (input, instructions) =
+        preceded(tag("Program: "), separated_list1(char(','), complete::u8))(input)?;
+
+    Ok((input, ((b, c), instructions)))
+}
+
+// NOTE: this only checks if I made correct assumption about the data
+fn assert_data(instructions: &[Instruction]) {
+    assert_eq!(
+        1,
+        instructions
+            .iter()
+            .filter(|x| match x {
+                Instruction::Adv(_) => true,
+                _ => false,
+            })
+            .count()
+    );
 }
 
 pub fn process(input: &str) -> String {
+    let (_, ((b, c), inst_vec)) = parse(input).unwrap();
+    let instructions = parse_instructions(&inst_vec);
+    assert_data(&instructions);
+
+    let Instruction::Adv(digits) = instructions
+        .iter()
+        .find(|x| match x {
+            Instruction::Adv(_) => true,
+            _ => false,
+        })
+        .unwrap()
+    else {
+        unreachable!()
+    };
+
+    dbg!(digits);
+
     todo!();
 }
 
@@ -139,5 +172,15 @@ Register C: 0
 
 Program: 0,1,5,4,3,0";
         assert_eq!("117440", process(input));
+    }
+
+    #[test]
+    fn test_my_input() {
+        let input = "Register A: 27334280
+Register B: 0
+Register C: 0
+
+Program: 2,4,1,2,7,5,0,3,1,7,4,1,5,5,3,0";
+        assert_eq!("190615597431823", process(input));
     }
 }
