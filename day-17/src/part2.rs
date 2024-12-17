@@ -36,6 +36,13 @@ impl Computer {
             _ => unreachable!(),
         }
     }
+
+    fn run_program(&mut self, instructions: &[Instruction]) {
+        while let Some(ins) = instructions.get(self.cur_instruction) {
+            self.execute(ins);
+        }
+    }
+
     fn execute(&mut self, instruction: &Instruction) {
         let mut next_instruction: Option<usize> = None;
         match instruction {
@@ -139,6 +146,59 @@ fn assert_data(instructions: &[Instruction]) {
     );
 }
 
+fn check_output(given: &[u8], expected: &[u8], n: usize) -> bool {
+    if given.len() <= n {
+        return false;
+    }
+
+    for i in 0..=n {
+        if given[i] != expected[i] {
+            return false;
+        }
+    }
+    true
+}
+
+fn find_a_register(
+    digits: usize,
+    instructions: &[Instruction],
+    expected_output: &[u8],
+    cur_instruction: usize,
+    cur_a: u64,
+    b: u64,
+    c: u64,
+) -> Option<u64> {
+    let mut min_res = None;
+    for x in 0..(1 << digits) {
+        let a = (cur_a << digits) + x;
+        let mut computer = Computer::new(a, b, c);
+        computer.run_program(instructions);
+        if !check_output(&computer.output, expected_output, cur_instruction) {
+            continue;
+        }
+
+        if let Some(res) = find_a_register(
+            digits,
+            instructions,
+            expected_output,
+            cur_instruction + 1,
+            a,
+            b,
+            c,
+        ) {
+            if let Some(cur_min) = min_res {
+                if cur_min > res {
+                    min_res = Some(res);
+                }
+            } else {
+                min_res = Some(res);
+            }
+        }
+    }
+
+    min_res
+}
+
 pub fn process(input: &str) -> String {
     let (_, ((b, c), inst_vec)) = parse(input).unwrap();
     let instructions = parse_instructions(&inst_vec);
@@ -155,7 +215,8 @@ pub fn process(input: &str) -> String {
         unreachable!()
     };
 
-    dbg!(digits);
+    let res = find_a_register(*digits as usize, &instructions, &inst_vec, 0, 0, b, c);
+    dbg!(res);
 
     todo!();
 }
@@ -174,7 +235,6 @@ Program: 0,1,5,4,3,0";
         assert_eq!("117440", process(input));
     }
 
-    #[test]
     fn test_my_input() {
         let input = "Register A: 27334280
 Register B: 0
