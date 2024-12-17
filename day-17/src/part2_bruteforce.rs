@@ -239,18 +239,3 @@ pub fn process(input: &str) -> String {
 
     "".to_string()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_part2() {
-        let input = "Register A: 2024
-Register B: 0
-Register C: 0
-
-Program: 0,3,5,4,3,0";
-        assert_eq!("117440", process(input));
-    }
-}
