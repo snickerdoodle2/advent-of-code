@@ -1,5 +1,3 @@
-use std::cmp::Reverse;
-
 use itertools::Itertools;
 use nom::{
     bytes::complete::tag,
@@ -8,7 +6,6 @@ use nom::{
     sequence::{delimited, preceded},
     IResult,
 };
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 #[derive(Debug)]
 struct Computer {
@@ -40,6 +37,49 @@ impl Computer {
             _ => unreachable!(),
         }
     }
+    fn execute(&mut self, instruction: &Instruction) {
+        let mut next_instruction: Option<usize> = None;
+        match instruction {
+            Instruction::Adv(operand) => {
+                let denominator: u64 = 2_u64.pow(self.operand(*operand) as u32);
+                let res = self.a / denominator;
+                self.a = res;
+            }
+            Instruction::Bxl(operand) => {
+                let operand = self.operand(*operand);
+                self.b ^= operand;
+            }
+            Instruction::Bst(operand) => {
+                let operand = self.operand(*operand);
+                self.b = operand % 8;
+            }
+            Instruction::Jnz(operand) => {
+                if self.a != 0 {
+                    let operand = self.operand(*operand);
+                    next_instruction = Some(operand as usize);
+                }
+            }
+            Instruction::Bxc(_) => {
+                let res = self.b ^ self.c;
+                self.b = res;
+            }
+            Instruction::Out(operand) => {
+                let res = self.operand(*operand) % 8;
+                self.output.push(res as u8);
+            }
+            Instruction::Bdv(operand) => {
+                let denominator: u64 = 2_u64.pow(self.operand(*operand) as u32);
+                let res = self.a / denominator;
+                self.b = res;
+            }
+            Instruction::Cdv(operand) => {
+                let denominator: u64 = 2_u64.pow(self.operand(*operand) as u32);
+                let res = self.a / denominator;
+                self.c = res;
+            }
+        }
+        self.cur_instruction = next_instruction.unwrap_or_else(|| self.cur_instruction + 1);
+    }
 }
 
 #[derive(Debug)]
@@ -55,60 +95,20 @@ enum Instruction {
     Cdv(u8),
 }
 
-impl Instruction {
-    fn execute(&self, computer: &mut Computer) {
-        let mut next_instruction: Option<usize> = None;
-        match self {
-            Instruction::Adv(operand) => {
-                let denominator: u64 = 2_u64.pow(computer.operand(*operand) as u32);
-                let res = computer.a / denominator;
-                computer.a = res;
-            }
-            Instruction::Bxl(operand) => {
-                let operand = computer.operand(*operand);
-                computer.b ^= operand;
-            }
-            Instruction::Bst(operand) => {
-                let operand = computer.operand(*operand);
-                computer.b = operand % 8;
-            }
-            Instruction::Jnz(operand) => {
-                if computer.a != 0 {
-                    let operand = computer.operand(*operand);
-                    next_instruction = Some(operand as usize);
-                }
-            }
-            Instruction::Bxc(_) => {
-                let res = computer.b ^ computer.c;
-                computer.b = res;
-            }
-            Instruction::Out(operand) => {
-                let res = computer.operand(*operand) % 8;
-                computer.output.push(res as u8);
-            }
-            Instruction::Bdv(operand) => {
-                let denominator: u64 = 2_u64.pow(computer.operand(*operand) as u32);
-                let res = computer.a / denominator;
-                computer.b = res;
-            }
-            Instruction::Cdv(operand) => {
-                let denominator: u64 = 2_u64.pow(computer.operand(*operand) as u32);
-                let res = computer.a / denominator;
-                computer.c = res;
-            }
-        }
-        computer.cur_instruction = next_instruction.unwrap_or_else(|| computer.cur_instruction + 1);
-    }
-}
+fn parse(input: &str) -> IResult<&str, (Computer, Vec<Instruction>)> {
+    let (input, a) = delimited(tag("Register A: "), complete::u64, many1(newline))(input)?;
+    let (input, b) = delimited(tag("Register B: "), complete::u64, many1(newline))(input)?;
+    let (input, c) = delimited(tag("Register C: "), complete::u64, many1(newline))(input)?;
+    let (input, instructions) =
+        preceded(tag("Program: "), separated_list1(char(','), complete::u8))(input)?;
 
-fn parse_instructions(ins: &[u8]) -> Vec<Instruction> {
-    ins.into_iter()
+    let instructions = instructions
+        .into_iter()
         .chunks(2)
         .into_iter()
         .map(|mut i| {
             let opcode = i.next().unwrap();
             let operand = i.next().unwrap();
-            let operand = *operand;
             match opcode {
                 0 => Instruction::Adv(operand),
                 1 => Instruction::Bxl(operand),
@@ -121,123 +121,17 @@ fn parse_instructions(ins: &[u8]) -> Vec<Instruction> {
                 _ => unreachable!(),
             }
         })
-        .collect()
-}
-
-fn parse(input: &str) -> IResult<&str, ((u64, u64), Vec<u8>)> {
-    let (input, _) = delimited(tag("Register A: "), complete::u64, many1(newline))(input)?;
-    let (input, b) = delimited(tag("Register B: "), complete::u64, many1(newline))(input)?;
-    let (input, c) = delimited(tag("Register C: "), complete::u64, many1(newline))(input)?;
-    let (input, instructions) =
-        preceded(tag("Program: "), separated_list1(char(','), complete::u8))(input)?;
-
-    Ok((input, ((b, c), instructions)))
-}
-
-fn generate_range(start: u64, stop: u64, n: u64) -> Vec<(u64, u64)> {
-    let size = (stop - start) as f64;
-    let step_size = (size / n as f64).ceil() as u64;
-    (0..n)
-        .map(|i| {
-            let l = start + i * step_size;
-            let r = start + (i + 1) * step_size;
-
-            (l, r.min(stop))
-        })
-        .collect()
-}
-
-pub fn process(input: &str) -> String {
-    let (_, ((b, c), instructions_vec)) = parse(input).unwrap();
-    let instructions = parse_instructions(&instructions_vec);
-
-    let mut i = 1;
-    let mut lower_bound = 0;
-    let mut upper_bound = 0;
-    let mut found_lower = false;
-
-    loop {
-        let mut computer = Computer::new(i, b, c);
-        while let Some(instruction) = instructions.get(computer.cur_instruction) {
-            instruction.execute(&mut computer);
-        }
-
-        if computer.output.len() == instructions_vec.len() && !found_lower {
-            lower_bound = i;
-            found_lower = true;
-        }
-
-        if computer.output.len() > instructions_vec.len() && found_lower {
-            upper_bound = i;
-            break;
-        }
-
-        i *= 2;
-    }
-
-    println!(
-        "Lower: {}, Upper: {}, Size: {}",
-        lower_bound,
-        upper_bound,
-        upper_bound - lower_bound
-    );
-
-    let mut chunks: Vec<(usize, u64, u64)> = generate_range(lower_bound, upper_bound, 100_000_000)
-        .par_iter()
-        .map(|(start, end)| {
-            let mut computer_1 = Computer::new(*start, b, c);
-            while let Some(instruction) = instructions.get(computer_1.cur_instruction) {
-                instruction.execute(&mut computer_1);
-            }
-
-            let valid_1 = computer_1
-                .output
-                .iter()
-                .zip(&instructions_vec)
-                .filter(|(a, b)| a == b)
-                .count();
-
-            let mut computer_2 = Computer::new(*end, b, c);
-            while let Some(instruction) = instructions.get(computer_2.cur_instruction) {
-                instruction.execute(&mut computer_2);
-            }
-
-            let valid_2 = computer_2
-                .output
-                .iter()
-                .zip(&instructions_vec)
-                .filter(|(a, b)| a == b)
-                .count();
-
-            (valid_1 + valid_2, *start, *end)
-        })
         .collect();
 
-    chunks.sort_by_key(|x| (Reverse(x.0), x.1));
-
-    let mut min_match = u64::MAX;
-
-    for (i, (matches, start, end)) in chunks.into_iter().take(1_000_000).enumerate() {
-        println!("CHUNK {}: {}..{} ({} matches)", i, start, end, matches);
-
-        let res = (start..end).into_par_iter().find_first(|a| {
-            let mut computer = Computer::new(*a, b, c);
-            while let Some(instruction) = instructions.get(computer.cur_instruction) {
-                instruction.execute(&mut computer);
-            }
-
-            computer.output == instructions_vec
-        });
-
-        if let Some(res) = res {
-            if min_match > res {
-                min_match = res;
-                println!("{}", res);
-            }
-        }
+    Ok((input, (Computer::new(a, b, c), instructions)))
+}
+pub fn process(input: &str) -> String {
+    let (_, (mut computer, instructions)) = parse(input).unwrap();
+    while let Some(instruction) = instructions.get(computer.cur_instruction) {
+        instruction.execute(&mut computer);
     }
 
-    "".to_string()
+    computer.output.into_iter().join(",")
 }
 
 #[cfg(test)]
@@ -245,12 +139,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_part2() {
-        let input = "Register A: 2024
+    fn test_part1() {
+        let input = "Register A: 729
 Register B: 0
 Register C: 0
 
-Program: 0,3,5,4,3,0";
-        assert_eq!("117440", process(input));
+Program: 0,1,5,4,3,0";
+        assert_eq!("4,6,3,5,6,3,5,2,1,0", process(input));
     }
 }
