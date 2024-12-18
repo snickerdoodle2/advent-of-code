@@ -5,9 +5,15 @@ use std::{
 };
 
 #[allow(dead_code)]
-fn print_map(map: &Vec<Vec<Option<()>>>) {
-    for row in map {
-        for c in row {
+fn print_map(map: &Vec<Vec<Option<()>>>, path: Option<&Vec<(usize, usize)>>) {
+    for (y, row) in map.iter().enumerate() {
+        for (x, c) in row.iter().enumerate() {
+            if let Some(path) = path {
+                if path.contains(&(x, y)) {
+                    print!("O");
+                    continue;
+                }
+            }
             let c = match c {
                 Some(_) => '#',
                 None => '.',
@@ -23,11 +29,11 @@ fn in_bounds(x: isize, y: isize, width: usize, height: usize) -> bool {
 }
 
 #[derive(PartialEq, Eq, PartialOrd)]
-struct Path(isize, isize, usize);
+struct Path(isize, isize, Vec<(usize, usize)>);
 
 impl Ord for Path {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.2.cmp(&other.2)
+        self.2.len().cmp(&other.2.len())
     }
 }
 
@@ -39,12 +45,12 @@ fn find_path(
     end_y: usize,
     width: usize,
     height: usize,
-) -> Option<usize> {
+) -> Option<Vec<(usize, usize)>> {
     let mut visited: HashSet<(isize, isize)> = HashSet::new();
     let mut queue: BinaryHeap<Reverse<Path>> = BinaryHeap::new();
-    queue.push(Reverse(Path(start_x as isize, start_y as isize, 0)));
+    queue.push(Reverse(Path(start_x as isize, start_y as isize, vec![])));
 
-    while let Some(Reverse(Path(xi, yi, path))) = queue.pop() {
+    while let Some(Reverse(Path(xi, yi, mut path))) = queue.pop() {
         if visited.contains(&(xi, yi))
             || !in_bounds(xi, yi, width, height)
             || map[yi as usize][xi as usize].is_some()
@@ -58,10 +64,13 @@ fn find_path(
         if x == end_x && y == end_y {
             return Some(path);
         }
-        queue.push(Reverse(Path(xi - 1, yi, path + 1)));
-        queue.push(Reverse(Path(xi + 1, yi, path + 1)));
-        queue.push(Reverse(Path(xi, yi - 1, path + 1)));
-        queue.push(Reverse(Path(xi, yi + 1, path + 1)));
+
+        path.push((x, y));
+
+        queue.push(Reverse(Path(xi - 1, yi, path.clone())));
+        queue.push(Reverse(Path(xi + 1, yi, path.clone())));
+        queue.push(Reverse(Path(xi, yi - 1, path.clone())));
+        queue.push(Reverse(Path(xi, yi + 1, path.clone())));
     }
 
     None
@@ -89,7 +98,7 @@ pub fn process(input: &str, width: usize, height: usize, max_bytes: usize) -> St
 
     let res = find_path(&map, start_x, start_y, end_x, end_y, width, height);
 
-    res.unwrap().to_string()
+    res.unwrap().len().to_string()
 }
 
 #[cfg(test)]
