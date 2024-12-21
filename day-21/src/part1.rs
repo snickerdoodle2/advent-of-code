@@ -20,7 +20,29 @@ impl Action {
 }
 
 trait ButtonPresser {
-    fn next_action(&mut self) -> Option<Action>;
+    fn on_illegal(&self) -> bool;
+    fn done(&self) -> bool;
+    fn shortest_path(&self) -> Action;
+    fn change_current(&mut self);
+    fn move_next(&mut self, action: &Action);
+
+    fn next_action(&mut self) -> Option<Action> {
+        if self.on_illegal() {
+            unreachable!(); // WE CANNOT STEP ON EMPTY SPACE
+        }
+        if self.done() {
+            return None;
+        }
+
+        let action = self.shortest_path();
+        if action == Action::Press {
+            self.change_current();
+        } else {
+            self.move_next(&action);
+        }
+
+        Some(action)
+    }
 }
 
 //     +---+---+
@@ -57,8 +79,26 @@ impl<T: ButtonPresser> Directional<T> {
 }
 
 impl<T: ButtonPresser> ButtonPresser for Directional<T> {
-    fn next_action(&mut self) -> Option<Action> {
+    fn on_illegal(&self) -> bool {
+        self.cur_x == 0 && self.cur_y == 0
+    }
+
+    fn done(&self) -> bool {
+        self.current.is_none()
+    }
+
+    fn shortest_path(&self) -> Action {
         todo!()
+    }
+
+    fn change_current(&mut self) {
+        self.current = self.inner.next_action();
+    }
+
+    fn move_next(&mut self, action: &Action) {
+        let (dx, dy) = action.to_vec().expect("Not press");
+        self.cur_x += dx;
+        self.cur_y += dy;
     }
 }
 
@@ -107,6 +147,16 @@ impl<'a> Numeric<'a> {
             _ => unreachable!(),
         }
     }
+}
+
+impl ButtonPresser for Numeric<'_> {
+    fn on_illegal(&self) -> bool {
+        self.cur_x == 0 && self.cur_y == 3
+    }
+
+    fn done(&self) -> bool {
+        self.current.is_none()
+    }
 
     fn shortest_path(&self) -> Action {
         let (x, y) = self.get_target_pos();
@@ -125,27 +175,15 @@ impl<'a> Numeric<'a> {
 
         Action::Down
     }
-}
 
-impl ButtonPresser for Numeric<'_> {
-    fn next_action(&mut self) -> Option<Action> {
-        if self.cur_x == 0 && self.cur_y == 3 {
-            unreachable!(); // WE CANNOT STEP ON EMPTY SPACE
-        }
-        if self.current.is_none() {
-            return None;
-        }
+    fn change_current(&mut self) {
+        self.current = self.code.next();
+    }
 
-        let action = self.shortest_path();
-        if action == Action::Press {
-            self.current = self.code.next();
-        } else {
-            let (dx, dy) = action.to_vec().expect("Not press");
-            self.cur_x += dx;
-            self.cur_y += dy;
-        }
-
-        Some(action)
+    fn move_next(&mut self, action: &Action) {
+        let (dx, dy) = action.to_vec().expect("Not press");
+        self.cur_x += dx;
+        self.cur_y += dy;
     }
 }
 
