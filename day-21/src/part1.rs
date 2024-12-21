@@ -1,3 +1,5 @@
+use std::thread::current;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Action {
     Left,
@@ -58,10 +60,11 @@ struct Directional<T: ButtonPresser> {
 }
 
 impl<T: ButtonPresser> Directional<T> {
-    fn new(inner: T) -> Self {
+    fn new(mut inner: T) -> Self {
+        let current = inner.next_action();
         Self {
             inner,
-            current: None,
+            current,
             cur_x: 2,
             cur_y: 0,
         }
@@ -88,7 +91,25 @@ impl<T: ButtonPresser> ButtonPresser for Directional<T> {
     }
 
     fn shortest_path(&self) -> Action {
-        todo!()
+        let (x, y) = self.get_target_pos();
+
+        if self.cur_x == x && self.cur_y == y {
+            return Action::Press;
+        }
+
+        if self.cur_y < y {
+            return Action::Down;
+        }
+
+        if self.cur_x < x {
+            return Action::Right;
+        }
+
+        if self.cur_x > x {
+            return Action::Left;
+        }
+
+        Action::Up
     }
 
     fn change_current(&mut self) {
