@@ -113,7 +113,7 @@ impl<'a> Numeric<'a> {
         if self.cur_x == x && self.cur_y == y {
             return Action::Press;
         }
-        if self.cur_y < y {
+        if self.cur_y > y {
             return Action::Up;
         }
         if self.cur_x < x {
