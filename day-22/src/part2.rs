@@ -1,5 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
+use rayon::iter::{ParallelBridge, ParallelIterator};
+
 struct Monkey(u64);
 
 impl Monkey {
@@ -65,17 +67,37 @@ fn find_monkey_pattern(starting: u64) -> HashMap<[i8; 4], i8> {
 }
 
 pub fn process(input: &str) -> String {
-    let mut res: HashMap<[i8; 4], u32> = HashMap::new();
-    for line in input.lines() {
-        let line_res = find_monkey_pattern(line.parse().unwrap());
-        for (key, v) in line_res {
-            res.entry(key)
-                .and_modify(|x| {
-                    *x += v as u32;
-                })
-                .or_insert(v as u32);
-        }
-    }
+    let res: HashMap<[i8; 4], u32> = input
+        .lines()
+        .par_bridge()
+        .map(|line| find_monkey_pattern(line.parse().unwrap()))
+        .fold(
+            || HashMap::new(),
+            |mut acc, line_res| {
+                for (k, v) in line_res {
+                    acc.entry(k)
+                        .and_modify(|prev| {
+                            *prev += v as u32;
+                        })
+                        .or_insert(v as u32);
+                }
+
+                acc
+            },
+        )
+        .reduce(
+            || HashMap::new(),
+            |mut acc, cur| {
+                for (k, v) in cur {
+                    acc.entry(k)
+                        .and_modify(|prev| {
+                            *prev += v as u32;
+                        })
+                        .or_insert(v as u32);
+                }
+                acc
+            },
+        );
 
     res.values().max().unwrap().to_string()
 }
