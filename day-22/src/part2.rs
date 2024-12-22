@@ -1,6 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-
-use itertools::{repeat_n, Itertools};
+use std::collections::{HashMap, VecDeque};
 
 struct Monkey(u64);
 
