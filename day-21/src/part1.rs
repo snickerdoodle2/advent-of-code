@@ -208,15 +208,47 @@ impl ButtonPresser for Numeric<'_> {
     }
 }
 
-pub fn process(input: &'static str) -> String {
-    let t = input.lines().next().unwrap();
-    dbg!(&t);
-    let mut r = Numeric::new(t);
+fn get_min_count(code: &'static str) -> usize {
+    let n = Numeric::new(code);
+    let r = Directional::new(n);
+    let mut r = Directional::new(r);
+    let mut res = 0;
     while let Some(a) = r.next_action() {
-        dbg!(a);
+        let c = match a {
+            Action::Left => '<',
+            Action::Right => '>',
+            Action::Up => '^',
+            Action::Down => 'v',
+            Action::Press => 'A',
+        };
+        print!("{c}");
+        res += 1;
+    }
+    println!();
+    res
+}
+
+fn get_complexity(input: &str) -> u32 {
+    let mut res = 0;
+    for c in input.chars() {
+        if let Some(digit) = c.to_digit(10) {
+            res = res * 10 + digit;
+        }
     }
 
-    todo!()
+    res
+}
+
+pub fn process(input: &'static str) -> String {
+    input
+        .lines()
+        .map(|code| {
+            let shortest = get_min_count(code);
+            let complexity = get_complexity(code);
+            shortest * complexity as usize
+        })
+        .sum::<usize>()
+        .to_string()
 }
 
 #[cfg(test)]
@@ -231,8 +263,18 @@ mod tests {
     #[case("179A", 68)]
     #[case("456A", 64)]
     #[case("379A", 64)]
-    fn test_shortest_sequence(#[case] input: &str, #[case] res: usize) {
-        todo!()
+    fn test_shortest_sequence(#[case] input: &'static str, #[case] res: usize) {
+        assert_eq!(res, get_min_count(input));
+    }
+
+    #[rstest]
+    #[case("029A", 29)]
+    #[case("980A", 980)]
+    #[case("179A", 179)]
+    #[case("456A", 456)]
+    #[case("379A", 379)]
+    fn test_complexity(#[case] input: &str, #[case] res: u32) {
+        assert_eq!(res, get_complexity(input));
     }
 
     #[test]
