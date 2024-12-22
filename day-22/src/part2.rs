@@ -52,8 +52,11 @@ fn find_monkey_pattern(starting: u64) -> HashMap<[i8; 4], i8> {
                 *diff.get(1).unwrap(),
                 *diff.get(2).unwrap(),
                 *diff.get(3).unwrap(),
-            );
-            res.insert(key.into(), new_price);
+            )
+                .into();
+            if !res.contains_key(&key) {
+                res.insert(key, new_price);
+            }
         }
         cur_price = new_price;
     }
