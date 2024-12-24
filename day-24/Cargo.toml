@@ -9,6 +9,7 @@ itertools.workspace = true
 nom.workspace = true
 rayon.workspace = true
 glam.workspace = true
+petgraph = "0.6.5"
 
 [dev-dependencies]
 rstest.workspace = true

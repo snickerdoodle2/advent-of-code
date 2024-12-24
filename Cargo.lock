@@ -428,6 +428,7 @@ dependencies = [
  "indicatif",
  "itertools",
  "nom",
+ "petgraph",
  "rayon",
  "rstest",
 ]
