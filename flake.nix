@@ -22,6 +22,8 @@
             buildInputs = [
               cargo
               cargo-generate
+              just
+              watchexec
             ];
           };
         };
