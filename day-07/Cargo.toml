@@ -1,0 +1,20 @@
+[package]
+name = "day-07"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+indicatif.workspace = true
+itertools.workspace = true
+nom.workspace = true
+rayon.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+divan.workspace = true
+
+[[bench]]
+name = "day-07-bench"
+harness = false
+path = "./benches/benchmark.rs"
